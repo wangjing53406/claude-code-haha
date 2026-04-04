@@ -112,7 +112,7 @@ export default defineConfig({
   title: 'Claude Code Haha',
   description: '基于 Claude Code 泄露源码修复的本地可运行版本，支持接入任意 Anthropic 兼容 API',
   lastUpdated: true,
-  base: '/',
+  base: '/cc-haha/',
 
   head: [
     // Google Analytics - 获取 GA ID 后取消注释
