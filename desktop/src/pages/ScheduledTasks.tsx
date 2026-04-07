@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTaskStore } from '../stores/taskStore'
 import { useUIStore } from '../stores/uiStore'
+import { useTranslation } from '../i18n'
 import { Button } from '../components/shared/Button'
 import { TaskList } from '../components/tasks/TaskList'
 import { TaskEmptyState } from '../components/tasks/TaskEmptyState'
@@ -9,6 +10,7 @@ import { NewTaskModal } from '../components/tasks/NewTaskModal'
 export function ScheduledTasks() {
   const { tasks, fetchTasks, isLoading } = useTaskStore()
   const { activeModal, openModal, closeModal } = useUIStore()
+  const t = useTranslation()
   const [initialized, setInitialized] = useState(false)
 
   useEffect(() => {
@@ -21,19 +23,22 @@ export function ScheduledTasks() {
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">Scheduled tasks</h1>
+            <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t('scheduledPage.title')}</h1>
             <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-              Run tasks on a schedule or whenever you need them. Type <code className="px-1 py-0.5 rounded bg-[var(--color-surface-container)] text-xs font-[var(--font-mono)]">/schedule</code> in any existing session to create one.
+              {(() => {
+                const parts = t('scheduledPage.subtitle').split('{code}')
+                return <>{parts[0]}<code className="px-1 py-0.5 rounded bg-[var(--color-surface-container)] text-xs font-[var(--font-mono)]">/schedule</code>{parts[1]}</>
+              })()}
             </p>
           </div>
-          <Button onClick={() => openModal('new-task')}>+ New task</Button>
+          <Button onClick={() => openModal('new-task')}>{t('tasks.newTask')}</Button>
         </div>
 
         {/* Desktop-online notice */}
         <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[var(--radius-md)] bg-[var(--color-warning)]/8 border border-[var(--color-warning)]/15 mb-6">
           <span className="material-symbols-outlined text-[18px] text-[var(--color-warning)]">schedule</span>
           <span className="text-xs text-[var(--color-text-secondary)]">
-            Scheduled tasks only run while the desktop app is open. Make sure it stays running for tasks to fire on time.
+            {t('scheduledPage.desktopNotice')}
           </span>
         </div>
 

@@ -281,7 +281,9 @@ export const zh: Record<TranslationKey, string> = {
 
   // ─── Scheduled Tasks Pages ──────────────────────────────────────
   'scheduledPage.title': '定时任务',
-  'scheduledPage.subtitle': '管理自动化运维流程和后台维护任务。',
+  'scheduledPage.subtitle': '按计划或在需要时运行任务。在任意会话中输入 {code} 即可创建。',
+  'scheduledPage.desktopNotice': '定时任务仅在桌面应用打开时运行。请确保应用持续运行以按时触发任务。',
+  'scheduledPage.oldSubtitle': '管理自动化运维流程和后台维护任务。',
   'scheduledPage.executionMode': '执行模式',
   'scheduledPage.localMode': '本地模式',
   'scheduledPage.remoteMode': '远程模式',

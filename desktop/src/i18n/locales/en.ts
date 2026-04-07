@@ -278,8 +278,10 @@ export const en = {
   'teams.members': 'members',
 
   // ─── Scheduled Tasks Pages ──────────────────────────────────────
-  'scheduledPage.title': 'Scheduled Tasks',
-  'scheduledPage.subtitle': 'Manage automated operational routines and background maintenance.',
+  'scheduledPage.title': 'Scheduled tasks',
+  'scheduledPage.subtitle': 'Run tasks on a schedule or whenever you need them. Type {code} in any existing session to create one.',
+  'scheduledPage.desktopNotice': 'Scheduled tasks only run while the desktop app is open. Make sure it stays running for tasks to fire on time.',
+  'scheduledPage.oldSubtitle': 'Manage automated operational routines and background maintenance.',
   'scheduledPage.executionMode': 'Execution Mode',
   'scheduledPage.localMode': 'Local Mode',
   'scheduledPage.remoteMode': 'Remote Mode',
