@@ -43,7 +43,7 @@ type ChatStore = {
   handleServerMessage: (msg: ServerMessage) => void
 }
 
-const TASK_TOOL_NAMES = new Set(['TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList'])
+const TASK_TOOL_NAMES = new Set(['TaskCreate', 'TaskUpdate', 'TaskGet', 'TaskList', 'TodoWrite'])
 
 /** Track tool_use IDs for task-related tools, so we can refresh on tool_result */
 const pendingTaskToolUseIds = new Set<string>()
@@ -136,20 +136,43 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           }))
         : undefined
 
-    // Add user message to UI
-    set((s) => ({
-      messages: [...s.messages, {
+    // If all tasks are completed, inline the task summary before the new user message
+    const taskStore = useCLITaskStore.getState()
+    const allTasksDone = taskStore.tasks.length > 0 && taskStore.tasks.every((t) => t.status === 'completed')
+
+    // Add user message to UI (with optional task summary before it)
+    set((s) => {
+      const newMessages = [...s.messages]
+      if (allTasksDone) {
+        newMessages.push({
+          id: nextId(),
+          type: 'task_summary',
+          tasks: taskStore.tasks.map((t) => ({
+            id: t.id,
+            subject: t.subject,
+            status: t.status,
+            activeForm: t.activeForm,
+          })),
+          timestamp: Date.now(),
+        })
+        // Clear sticky task bar since we inlined the summary
+        taskStore.clearTasks()
+      }
+      newMessages.push({
         id: nextId(),
         type: 'user_text',
         content: userFacingContent,
         attachments: uiAttachments,
         timestamp: Date.now(),
-      }],
-      chatState: 'thinking',
-      elapsedSeconds: 0,
-      streamingText: '',
-      statusVerb: randomSpinnerVerb(),
-    }))
+      })
+      return {
+        messages: newMessages,
+        chatState: 'thinking',
+        elapsedSeconds: 0,
+        streamingText: '',
+        statusVerb: randomSpinnerVerb(),
+      }
+    })
 
     // Start elapsed timer
     if (elapsedTimer) clearInterval(elapsedTimer)
@@ -187,6 +210,16 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         }
         return { ...state, messages: uiMessages }
       })
+
+      // Extract the last TodoWrite input from history so TaskBar shows for V1 sessions
+      const lastTodos = extractLastTodoWriteFromHistory(messages)
+      if (lastTodos && lastTodos.length > 0) {
+        const taskStore = useCLITaskStore.getState()
+        // Only set if V2 task fetch didn't already populate tasks
+        if (taskStore.tasks.length === 0) {
+          taskStore.setTasksFromTodos(lastTodos)
+        }
+      }
     } catch {
       // Session may not have messages yet
     }
@@ -256,21 +289,30 @@ export const useChatStore = create<ChatStore>((set, get) => ({
         break
 
       case 'thinking':
-        // Merge consecutive thinking deltas into one message
+        // Merge consecutive thinking deltas into one message.
+        // Also flush any pending streamingText first — otherwise the text
+        // becomes invisible because MessageList only renders streamingText
+        // when chatState === 'streaming', and we're about to set it to 'thinking'.
         set((s) => {
-          const last = s.messages[s.messages.length - 1]
+          const pendingText = s.streamingText.trim()
+          const base = pendingText
+            ? [...s.messages, { id: nextId(), type: 'assistant_text' as const, content: pendingText, timestamp: Date.now() }]
+            : s.messages
+
+          const last = base[base.length - 1]
           if (last && last.type === 'thinking') {
             // Append to existing thinking message
-            const updated = [...s.messages]
+            const updated = [...base]
             updated[updated.length - 1] = { ...last, content: last.content + msg.text }
-            return { messages: updated, chatState: 'thinking', activeThinkingId: last.id }
+            return { messages: updated, chatState: 'thinking', activeThinkingId: last.id, streamingText: '' }
           }
           const id = nextId()
           // Create new thinking message
           return {
-            messages: [...s.messages, { id, type: 'thinking', content: msg.text, timestamp: Date.now() }],
+            messages: [...base, { id, type: 'thinking', content: msg.text, timestamp: Date.now() }],
             chatState: 'thinking',
             activeThinkingId: id,
+            streamingText: '',
           }
         })
         break
@@ -291,9 +333,12 @@ export const useChatStore = create<ChatStore>((set, get) => ({
           activeThinkingId: null,
           streamingToolInput: '',
         }))
-        // Track task-related tool calls — refresh will happen on tool_result
-        // when the tool has actually finished executing and written to disk
-        if (TASK_TOOL_NAMES.has(toolName)) {
+        // TodoWrite: input contains the full todo list — update tasks immediately
+        if (toolName === 'TodoWrite' && Array.isArray((msg.input as any)?.todos)) {
+          useCLITaskStore.getState().setTasksFromTodos((msg.input as any).todos)
+        } else if (TASK_TOOL_NAMES.has(toolName)) {
+          // V2 task tools — refresh will happen on tool_result
+          // when the tool has actually finished executing and written to disk
           const useId = msg.toolUseId || get().activeToolUseId
           if (useId) pendingTaskToolUseIds.add(useId)
         }
@@ -528,4 +573,27 @@ export function mapHistoryMessagesToUiMessages(messages: MessageEntry[]): UIMess
   }
 
   return uiMessages
+}
+
+/** Scan history messages for the last TodoWrite tool_use and return the todos array */
+function extractLastTodoWriteFromHistory(
+  messages: MessageEntry[],
+): Array<{ content: string; status: string; activeForm?: string }> | null {
+  // Walk backwards to find the most recent TodoWrite
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i]!
+    if ((msg.type === 'assistant' || msg.type === 'tool_use') && Array.isArray(msg.content)) {
+      const blocks = msg.content as AssistantHistoryBlock[]
+      for (let j = blocks.length - 1; j >= 0; j--) {
+        const block = blocks[j]!
+        if (block.type === 'tool_use' && block.name === 'TodoWrite') {
+          const input = block.input as { todos?: unknown } | undefined
+          if (input && Array.isArray(input.todos)) {
+            return input.todos as Array<{ content: string; status: string; activeForm?: string }>
+          }
+        }
+      }
+    }
+  }
+  return null
 }

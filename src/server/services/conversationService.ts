@@ -112,7 +112,7 @@ export class ConversationService {
     try {
       proc = Bun.spawn(args, {
         cwd: workDir,
-        env: { ...process.env },
+        env: { ...process.env, CLAUDE_CODE_ENABLE_TASKS: '1' },
         stdin: 'pipe',
         stdout: 'pipe',
         stderr: 'pipe',

@@ -9,6 +9,7 @@ import { ToolResultBlock } from './ToolResultBlock'
 import { PermissionDialog } from './PermissionDialog'
 import { AskUserQuestion } from './AskUserQuestion'
 import { StreamingIndicator } from './StreamingIndicator'
+import { InlineTaskSummary } from './InlineTaskSummary'
 import type { UIMessage } from '../../types/chat'
 
 type ToolCall = Extract<UIMessage, { type: 'tool_use' }>
@@ -186,6 +187,8 @@ function MessageBlock({
           <strong>Error:</strong> {message.message}
         </div>
       )
+    case 'task_summary':
+      return <InlineTaskSummary tasks={message.tasks} />
     case 'system':
       return (
         <div className="mb-3 text-center text-xs text-[var(--color-text-tertiary)]">

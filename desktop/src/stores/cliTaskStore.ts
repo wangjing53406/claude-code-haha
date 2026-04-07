@@ -2,6 +2,12 @@ import { create } from 'zustand'
 import { cliTasksApi } from '../api/cliTasks'
 import type { CLITask } from '../types/cliTask'
 
+type TodoItem = {
+  content: string
+  status: string
+  activeForm?: string
+}
+
 type CLITaskStore = {
   /** Current session ID being tracked */
   sessionId: string | null
@@ -14,6 +20,8 @@ type CLITaskStore = {
   fetchSessionTasks: (sessionId: string) => Promise<void>
   /** Refresh tasks for the currently tracked session */
   refreshTasks: () => Promise<void>
+  /** Update tasks from TodoWrite V1 tool input (in-memory, no disk read needed) */
+  setTasksFromTodos: (todos: TodoItem[]) => void
   /** Clear task tracking state */
   clearTasks: () => void
   /** Toggle expanded state */
@@ -52,6 +60,22 @@ export const useCLITaskStore = create<CLITaskStore>((set, get) => ({
     } catch {
       // ignore
     }
+  },
+
+  setTasksFromTodos: (todos) => {
+    const tasks: CLITask[] = todos.map((todo, index) => ({
+      id: String(index + 1),
+      subject: todo.content,
+      description: '',
+      activeForm: todo.activeForm,
+      status: (['pending', 'in_progress', 'completed'].includes(todo.status)
+        ? todo.status
+        : 'pending') as CLITask['status'],
+      blocks: [],
+      blockedBy: [],
+      taskListId: get().sessionId || '',
+    }))
+    set({ tasks })
   },
 
   clearTasks: () => {

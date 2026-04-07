@@ -64,6 +64,13 @@ export type TeamMemberStatus = {
 
 // ─── UI Message model (rendered in MessageList) ───────────────────
 
+export type TaskSummaryItem = {
+  id: string
+  subject: string
+  status: 'pending' | 'in_progress' | 'completed'
+  activeForm?: string
+}
+
 export type UIMessage =
   | { id: string; type: 'user_text'; content: string; timestamp: number; attachments?: UIAttachment[] }
   | { id: string; type: 'assistant_text'; content: string; timestamp: number; model?: string }
@@ -73,3 +80,4 @@ export type UIMessage =
   | { id: string; type: 'system'; content: string; timestamp: number }
   | { id: string; type: 'permission_request'; requestId: string; toolName: string; input: unknown; description?: string; timestamp: number }
   | { id: string; type: 'error'; message: string; code: string; timestamp: number }
+  | { id: string; type: 'task_summary'; tasks: TaskSummaryItem[]; timestamp: number }
